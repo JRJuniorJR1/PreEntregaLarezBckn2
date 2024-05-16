@@ -1,0 +1,24 @@
+<h2>Productos:</h2>
+<ul>
+    {{#each productData}}
+        <li> ID Product: {{ _id }} - Producto: {{ title }} - Precio: {{ price }} - {{ thumbnail }} - Codigo:{{code}} - Stock {{stock}}
+        </li>
+    {{/each}}
+</ul>
+
+
+<h2>Carrito:</h2>
+<ul>
+    {{#each carts}}
+        <li>
+            <h3>Carrito: {{ _id }}</h3>
+            <ul>
+                {{#each products}}
+                    <li>
+                        ID Cart: {{ productId }}- Producto: {{ title }} - Precio {{ price }} - Cantidad: {{ quantity }} - Total:
+                    </li>
+                {{/each}}
+            </ul>
+        </li>
+    {{/each}}
+</ul>
