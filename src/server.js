@@ -7,6 +7,7 @@ import chatRouter from './routes/chatRoute.js'
 import path from 'path';
 import http from 'http';
 import { initializeSocketEvents } from './routes/socketEvents.js';
+import mongoose from 'mongoose';
 import { MongoClient } from 'mongodb';
 
 const app = express();
@@ -39,8 +40,18 @@ app.use('/api/carts', cartRouter);
 app.use('/api', chatRouter);
 app.use('/', viewRoute);
 
-server.listen(PORT, () => {
-  console.log(`Servidor escuchando en el puerto ${PORT}`);
+
+const uri = 'mongodb://localhost:27017/Ecommerce';
+
+mongoose.connect(uri)
+.then(() => {
+  console.log('Conexión exitosa a MongoDB');
+  server.listen(PORT, () => {
+    console.log(`Servidor escuchando en el puerto ${PORT}`);
+  });
+})
+.catch(error => {
+  console.error('Error al conectar a MongoDB:', error);
 });
 
 export { server };

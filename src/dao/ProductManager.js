@@ -1,22 +1,15 @@
-import { MongoClient, ObjectId } from 'mongodb';
+import Product from './models/productSchema.js';
 
 export class ProductManager {
-  constructor(database) {
-    this.collection = database.collection('productos');
-  }
-
   async addProduct(product) {
     try {
-      const existingProduct = await this.collection.findOne({ code: product.code });
+      const existingProduct = await Product.findOne({ code: product.code });
       if (existingProduct) {
         throw new Error(`El código ${product.code} ya existe en la base de datos.`);
       }
-      const result = await this.collection.insertOne(product);
-      if (result && result.insertedId) {
-        return { message: 'Producto agregado satisfactoriamente', product: result.insertedId };
-      } else {
-        throw new Error('Resultado de inserción no válido');
-      }
+      const newProduct = new Product(product);
+      await newProduct.save();
+      return { message: 'Producto agregado satisfactoriamente', product: newProduct };
     } catch (error) {
       console.error('Error al agregar el producto:', error.message);
       throw new Error('Error al agregar el producto: ' + error.message);
@@ -25,7 +18,7 @@ export class ProductManager {
 
   async getAllProducts() {
     try {
-      const products = await this.collection.find({}).toArray();
+      const products = await Product.find({});
       return products;
     } catch (error) {
       throw new Error('Error al obtener los productos: ' + error.message);
@@ -34,7 +27,7 @@ export class ProductManager {
 
   async getProductById(id) {
     try {
-      const product = await this.collection.findOne({ _id: new ObjectId(id) });
+      const product = await Product.findById(id);
       if (!product) {
         throw new Error("Producto no encontrado.");
       }
@@ -46,14 +39,11 @@ export class ProductManager {
 
   async updateProduct(id, updatedFields) {
     try {
-      const result = await this.collection.updateOne(
-        { _id: new ObjectId(id) },
-        { $set: updatedFields }
-      );
-      if (result.modifiedCount === 0) {
+      const result = await Product.findByIdAndUpdate(id, updatedFields, { new: true });
+      if (!result) {
         throw new Error("Producto no encontrado.");
       }
-      return { message: "Producto actualizado con éxito." };
+      return { message: "Producto actualizado con éxito.", product: result };
     } catch (error) {
       throw new Error('Error al actualizar el producto: ' + error.message);
     }
@@ -61,8 +51,8 @@ export class ProductManager {
 
   async deleteProduct(id) {
     try {
-      const result = await this.collection.deleteOne({ _id: new ObjectId(id) });
-      if (result.deletedCount === 0) {
+      const result = await Product.findByIdAndDelete(id);
+      if (!result) {
         throw new Error("Producto no encontrado.");
       }
       return { message: "Producto eliminado satisfactoriamente" };
