@@ -3,7 +3,7 @@ import { MongoClient } from 'mongodb';
 
 const router = express.Router();
 
-const uri = 'mongodb://localhost:27017/Ecommerce';
+const uri = 'mongodb+srv://jrjuniorjr:jrjuniorjr@jrjuniorjrdatabase.pqxup5d.mongodb.net/Ecommerce';
 const client = new MongoClient(uri);
 
 async function connectToMongoDB() {
@@ -18,8 +18,8 @@ async function connectToMongoDB() {
 connectToMongoDB();
 
 const database = client.db('Ecommerce');
-const productsCollection = database.collection('productos');
-const cartsCollection = database.collection('carritos');
+const productsCollection = database.collection('products');
+const cartsCollection = database.collection('carts');
 
 router.get('/', (req, res) => {
     const pageTitle = 'Inicio';

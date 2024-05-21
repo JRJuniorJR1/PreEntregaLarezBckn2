@@ -4,7 +4,7 @@ import { MongoClient } from 'mongodb';
 
 const router = express.Router();
 
-const uri = 'mongodb://localhost:27017/Ecommerce';
+const uri = 'mongodb+srv://jrjuniorjr:jrjuniorjr@jrjuniorjrdatabase.pqxup5d.mongodb.net/Ecommerce';
 const client = new MongoClient(uri);
 
 async function connectToMongoDB() {

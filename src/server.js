@@ -12,7 +12,7 @@ import { MongoClient } from 'mongodb';
 
 const app = express();
 const server = http.createServer(app);
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 8081;
 
 const io = initializeSocketEvents(server);
 
@@ -41,7 +41,7 @@ app.use('/api', chatRouter);
 app.use('/', viewRoute);
 
 
-const uri = 'mongodb://localhost:27017/Ecommerce';
+const uri = 'mongodb+srv://jrjuniorjr:jrjuniorjr@jrjuniorjrdatabase.pqxup5d.mongodb.net/Ecommerce';
 
 mongoose.connect(uri)
 .then(() => {

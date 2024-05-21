@@ -1,6 +1,7 @@
 import Product from './models/productSchema.js';
 
 export class ProductManager {
+  
   async addProduct(product) {
     try {
       const existingProduct = await Product.findOne({ code: product.code });
@@ -11,19 +12,31 @@ export class ProductManager {
       await newProduct.save();
       return { message: 'Producto agregado satisfactoriamente', product: newProduct };
     } catch (error) {
-      console.error('Error al agregar el producto:', error.message);
       throw new Error('Error al agregar el producto: ' + error.message);
     }
-  }
+  } 
 
-  async getAllProducts() {
+  async getAllProducts(page = 1, limit = null, defaultLimit = 10, sort = null, query = {}) {
     try {
-      const products = await Product.find({});
+      let options = {
+        page: parseInt(page),
+        limit: parseInt(limit) || defaultLimit,
+        customLabels: {
+          docs: 'products',
+          totalDocs: 'totalProducts',
+          totalPages: 'totalPages',
+          nextPage: 'nextPage',
+          prevPage: 'prevPage'
+        },
+        sort: sort
+      };
+
+      const products = await Product.paginate(query, options);
       return products;
     } catch (error) {
       throw new Error('Error al obtener los productos: ' + error.message);
     }
-  }
+  }  
 
   async getProductById(id) {
     try {
@@ -60,4 +73,15 @@ export class ProductManager {
       throw new Error('Error al eliminar el producto: ' + error.message);
     }
   }
+
+
+async searchProductsByTitle(title, page = 1, limit = null, defaultLimit = 10, sort = null) {
+  try {
+    const query = { title: { $regex: title, $options: 'i' } };
+    return await this.getAllProducts(page, limit, defaultLimit, sort, query);
+  } catch (error) {
+    throw new Error('Error al buscar productos por título: ' + error.message);
+  }
 }
+}
+

@@ -5,10 +5,35 @@ import Product from '../dao/models/productSchema.js';
 const router = express.Router();
 const productManager = new ProductManager();
 
+router.use((req, res, next) => {
+  const defaultLimit = parseInt(req.app.get('defaultLimit'));
+  req.defaultLimit = defaultLimit;
+  next();
+});
+
 router.get('/', async (req, res) => {
   try {
-    const products = await Product.find();
-    res.json(products);
+    const { page = 1, limit = 10, sort, query } = req.query;
+    const sortOptions = sort ? JSON.parse(sort) : null;
+    const defaultLimit = 10;
+    let products;
+    if (query) {
+      products = await productManager.searchProductsByTitle(query, page, limit, sortOptions);
+    } else {
+      products = await productManager.getAllProducts(page, limit, defaultLimit, sortOptions);
+    }
+    res.json({
+      status: 'success',
+      payload: products.products,
+      totalPages: products.totalPages,
+      prevPage: products.prevPage,
+      nextPage: products.nextPage,
+      page: products.page,
+      hasPrevPage: products.hasPrevPage,
+      hasNextPage: products.hasNextPage,
+      prevLink: products.prevPage ? `/products?page=${products.prevPage}&limit=${limit}&sort=${sort}&query=${query}` : null,
+      nextLink: products.nextPage ? `/products?page=${products.nextPage}&limit=${limit}&sort=${sort}&query=${query}` : null
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal Server Error' });
@@ -64,6 +89,18 @@ router.delete('/:id', async (req, res) => {
     res.json(result);
   } catch (error) {
     res.status(404).json({ error: 'Producto no encontrado' });
+  }
+});
+
+router.get('/search', async (req, res) => {
+  try {
+    const title = req.query.title;
+    const productManager = new ProductManager();
+    const products = await productManager.searchProductsByTitle(title);
+    res.json(products);
+  } catch (error) {
+    console.error('Error al buscar productos por título:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 

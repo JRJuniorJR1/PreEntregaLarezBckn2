@@ -1,221 +1,346 @@
-<h1>Agregar Producto</h1>
-<form id="productForm">
-    <label for="title">Título:</label>
-    <input type="text" id="title" name="title" required><br>
-    <label for="description">Descripción:</label>
-    <textarea id="description" name="description" required></textarea><br>
-    <label for="price">Precio:</label>
-    <input type="number" id="price" name="price" required><br>
-    <label for="thumbnail">URL de la miniatura:</label>
-    <input type="text" id="thumbnail" name="thumbnail" required><br>
-    <label for="code">Código:</label>
-    <input type="text" id="code" name="code" required><br>
-    <label for="stock">Cantidad en stock:</label>
-    <input type="number" id="stock" name="stock" required><br>
-    <button type="submit">Agregar Producto</button>
-</form>
+    <h1>Agregar Producto</h1>
+    <form id="productForm">
+        <label for="title">Título:</label>
+        <input type="text" id="title" name="title" required><br>
+        <label for="description">Descripción:</label>
+        <textarea id="description" name="description" required></textarea><br>
+        <label for="price">Precio:</label>
+        <input type="number" id="price" name="price" required><br>
+        <label for="thumbnail">URL de la miniatura:</label>
+        <input type="text" id="thumbnail" name="thumbnail" required><br>
+        <label for="code">Código:</label>
+        <input type="text" id="code" name="code" required><br>
+        <label for="stock">Cantidad en stock:</label>
+        <input type="number" id="stock" name="stock" required><br>
+        <button type="submit">Agregar Producto</button>
+    </form>
 
-<h2>Productos en stock:</h2>
-<ul id="productList">
+    <h2>Productos en stock:</h2>
+    <ul id="productList"></ul>
 
-</ul>
-
-<div id="cartSelectionModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <span class="close" onclick="closeModal()">&times;</span>
-        <h2>Seleccionar Carrito:</h2>
-        <select id="cartSelect">
-            
-        </select>
-        <label for="productQuantity">Cantidad:</label>
-        <input type="number" id="productQuantity" name="productQuantity" value="1" min="1"><br>
-        <button id="addToCartButton">Agregar Producto</button>
+    <div id="cartSelectionModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Seleccionar Carrito:</h2>
+            <select id="cartSelect"></select>
+            <label for="productQuantity">Cantidad:</label>
+            <input type="number" id="productQuantity" name="productQuantity" value="1" min="1"><br>
+            <button id="addToCartButton">Agregar Producto</button>
+        </div>
     </div>
-</div>
 
+    <div>
+        <label for="limit">Límite:</label>
+        <select id="limit" name="limit" data-default-limit="10">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+        </select>
+        <label for="sort">Ordenar por:</label>
+        <select id="sort" name="sort">
+            <option value="">Sin ordenamiento</option>
+            <option value="{&quot;price&quot;:1}">Precio ascendente</option>
+            <option value="{&quot;price&quot;:-1}">Precio descendente</option>
+        </select>
+        <label for="query">Filtrar por título:</label>
+        <input type="text" id="query" name="query">
+        <button id="filterButton">Aplicar filtro</button>
+        <button id="clearFilterButton">Borrar filtro</button>
+    </div> 
 
+    <div id="pagination">
+        <button id="prevPageButton" onclick="prevPage()">Página Anterior</button>
+        <button id="nextPageButton" onclick="nextPage()">Página Siguiente</button>
+    </div>
 
-<script>
-document.getElementById('productForm').addEventListener('submit', agregarProducto);
-document.addEventListener('DOMContentLoaded', async () => {
-    await renderProducts();
-});
+    <div id="pageInfo"></div>
 
-document.querySelectorAll('button[data-product-id]').forEach(button => {
-    button.addEventListener('click', event => {
-        const productId = event.target.dataset.productId;
-        addToCart(productId, event);
-    });
-});
+    <script>
+        let currentPage = 1;
+        let products;
+        const defaultLimit = parseInt(document.getElementById('limit').getAttribute('data-default-limit'));
 
-async function renderProducts() {
-    const productList = document.getElementById('productList');
-    productList.innerHTML = '';
-    const productsResponse = await fetch('/api/products');
-    const products = await productsResponse.json();
+        document.getElementById('productForm').addEventListener('submit', agregarProducto);
 
-    products.forEach(product => {
-        const li = document.createElement('li');
-        li.innerHTML = `${product._id} - Producto: ${product.title} - Precio: ${product.price} - ${product.thumbnail} - Codigo: ${product.code} - Stock ${product.stock}`;
-        const editButton = document.createElement('button');
-        editButton.textContent = 'Editar';
-        editButton.addEventListener('click', () => editProduct(product._id));
-        const deleteButton = document.createElement('button');
-        deleteButton.textContent = 'Eliminar';
-        deleteButton.addEventListener('click', () => deleteProduct(product._id));
-        const addToCartButton = document.createElement('button');
-        addToCartButton.textContent = 'Agregar al Carrito';
-        addToCartButton.dataset.productId = product._id;
-        addToCartButton.addEventListener('click', event => addToCart(product._id, event));
-
-        li.appendChild(editButton);
-        li.appendChild(deleteButton);
-        li.appendChild(addToCartButton);
-        productList.appendChild(li);
-    });
-}
-
-async function agregarProducto(event) {
-    event.preventDefault();
-
-    const product = {
-        title: document.getElementById('title').value,
-        thumbnail: document.getElementById('thumbnail').value,
-        price: document.getElementById('price').value,
-        stock: document.getElementById('stock').value
-    };
-
-    const formData = new FormData(event.target);
-    formData.forEach((value, key) => {
-        product[key] = value;
+        document.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const limitParam = urlParams.get('limit');
+            if (!limitParam) {
+                const limitSelect = document.getElementById('limit');
+                limitSelect.value = defaultLimit.toString();
+            }
+            await renderProducts();
+        document.getElementById('filterButton').addEventListener('click', async () => {
+            const limit = document.getElementById('limit').value;
+            const sort = document.getElementById('sort').value;
+            const query = document.getElementById('query').value;
+            await renderProducts(1, limit, sort, query);
+        });
     });
 
-    fetch('/api/products', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(product)
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Error al agregar el producto');
+        document.getElementById('clearFilterButton').addEventListener('click', () => clearFilter());
+
+        async function clearFilter() {
+                document.getElementById('query').value = '';
+                await renderProducts(1);
+            }
+
+        async function renderProducts(page = 1, limit = defaultLimit, sort = null, query = '') {
+            const productList = document.getElementById('productList');
+            productList.innerHTML = '';
+
+            let url = `/api/products?page=${page}&limit=${limit}`;
+            if (sort) {
+                url += `&sort=${sort}`;
+            }
+            if (query) {
+                url += `&query=${query}`;
+            }
+
+            try {
+                const productsResponse = await fetch(url);
+                products = await productsResponse.json();
+
+                products.payload.forEach(product => {
+                    const li = document.createElement('li');
+                    li.textContent = `${product._id} - Producto: ${product.title} - Precio: ${product.price} - ${product.thumbnail} - Codigo: ${product.code} - Stock ${product.stock}`;
+                    
+                    const editButton = document.createElement('button');
+                    editButton.textContent = 'Editar';
+                    editButton.addEventListener('click', () => editProduct(product._id));
+
+                    const deleteButton = document.createElement('button');
+                    deleteButton.textContent = 'Eliminar';
+                    deleteButton.addEventListener('click', () => deleteProduct(product._id));
+
+                    const addToCartButton = document.createElement('button');
+                    addToCartButton.textContent = 'Agregar al Carrito';
+                    addToCartButton.dataset.productId = product._id;
+                    addToCartButton.addEventListener('click', event => addToCart(product._id, event));
+
+                    li.appendChild(editButton);
+                    li.appendChild(deleteButton);
+                    li.appendChild(addToCartButton);
+
+                    productList.appendChild(li);
+                });
+
+                updatePaginationButtons();
+                updatePageInfo();
+                updateURL(page, limit, sort, query);
+            } catch (error) {
+                console.error('Error al obtener los productos:', error);
+            }
         }
-        return response.json();
-    })
-    .then(data => {
-        alert('¡Producto agregado con éxito!');
-        renderProducts();
-    })
-    .catch(error => {
-        const code = product.code;
-        const errorMessage = `Error al agregar el producto: ${code} ya existe en la base de datos`;
-        alert(errorMessage);
-    });
-}
-
-function editProduct(id) {
-    const newTitle = prompt('Ingrese el nuevo título:');
-    const newDescription = prompt('Ingrese la nueva descripción:');
-    const newPrice = prompt('Ingrese el nuevo precio:');
-    const newThumbnail = prompt('Ingrese la nueva URL de la miniatura:');
-    const newCode = prompt('Ingrese el nuevo código:');
-    const newStock = prompt('Ingrese la nueva cantidad en stock:');
-    
-    if (newTitle && newDescription && newPrice && newThumbnail && newCode && newStock) {
-        fetch(`api/products/${id}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                title: newTitle,
-                description: newDescription,
-                price: newPrice,
-                thumbnail: newThumbnail,
-                code: newCode,
-                stock: newStock
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            alert(data.message);
-        })
-        .catch(error => console.error('Error:', error));
-    } else {
-        alert('Debe ingresar todos los campos para editar el producto.');
-    }
-}
-
-function deleteProduct(id) {
-    if (confirm('¿Está seguro de eliminar este producto?')) {
-        fetch(`/api/products/${id}`, {
-            method: 'DELETE'
-        })
-        .then(response => response.json())
-        .then(data => {
-            alert(data.message);
-        })
-        .catch(error => console.error('Error:', error));
-    }
-}
-
-async function addToCart(productId, event) {
-    event.stopPropagation();
-    document.getElementById('addToCartButton').setAttribute('data-product-id', productId);
-
-    const cartSelect = document.getElementById('cartSelect');
-    cartSelect.innerHTML = '';
-
-    try {
-        const cartsResponse = await fetch('/api/carts');
-        const carts = await cartsResponse.json();
-
-        carts.forEach(cart => {
-            const option = document.createElement('option');
-            option.value = cart._id;
-            option.textContent = cart._id;
-            cartSelect.appendChild(option);
-        });
-    } catch (error) {
-        console.error('Error al cargar la lista de carritos:', error);
-    }
-
-    document.getElementById('cartSelectionModal').style.display = 'block';
-}
-
-document.getElementById('addToCartButton').addEventListener('click', addToCartFromModal);
-
-async function addToCartFromModal() {
-    const productId = document.getElementById('addToCartButton').dataset.productId;
-    const cartId = document.getElementById('cartSelect').value;
-    const productQuantity = document.getElementById('productQuantity').value;
-
-    try {
-        const productResponse = await fetch(`/api/products/${productId}`);
-        const productDetails = await productResponse.json();
-
-        const response = await fetch(`/api/carts/${cartId}/product/${productId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                productId: productId,
-                quantity: productQuantity,
-                title: productDetails.title,
-                thumbnail: productDetails.thumbnail,
-                price: productDetails.price
-            })
-        });
-
-        const data = await response.json();
-        alert(data.message);
-        closeModal();
-    } catch (error) {
-        console.error('Error al agregar al carrito desde el modal:', error);
-    }
-}
 
 
-</script>
+        function updateURL(page, limit, sort, query) {
+            const queryParams = [];
+
+            if (page !== 1) {
+                queryParams.push(`page=${page}`);
+            }
+            if (limit !== defaultLimit) {
+                queryParams.push(`limit=${limit}`);
+            }
+            if (sort) {
+                queryParams.push(`sort=${sort}`);
+            }
+            if (query) {
+                queryParams.push(`query=${query}`);
+            }
+
+            const queryString = queryParams.join('&');
+
+            const newURL = window.location.pathname + (queryString ? `?${queryString}` : '');
+            window.history.replaceState(null, null, newURL);
+        }
+
+        function updatePaginationButtons() {
+            const prevPageButton = document.getElementById('prevPageButton');
+            const nextPageButton = document.getElementById('nextPageButton');
+
+            if (products.hasPrevPage) {
+                prevPageButton.disabled = false;
+            } else {
+                prevPageButton.disabled = true;
+            }
+
+            if (products.hasNextPage) {
+                nextPageButton.disabled = false;
+            } else {
+                nextPageButton.disabled = true;
+            }
+        }
+
+        async function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                const limit = document.getElementById('limit').value;
+                const sort = document.getElementById('sort').value;
+                const query = document.getElementById('query').value;
+                await renderProducts(currentPage, limit, sort, query);
+            }
+        }
+
+        async function nextPage() {
+            if (currentPage < products.totalPages) {
+                currentPage++;
+                const limit = document.getElementById('limit').value;
+                const sort = document.getElementById('sort').value;
+                const query = document.getElementById('query').value;
+                await renderProducts(currentPage, limit, sort, query);
+            }
+        }
+        
+        function updatePageInfo() {
+            const pageInfo = document.getElementById('pageInfo');
+            pageInfo.innerText = `Estás en la página ${currentPage} de ${products.totalPages} páginas.`;
+        }
+
+        async function agregarProducto(event) {
+            event.preventDefault();
+
+            const product = {
+                title: document.getElementById('title').value,
+                thumbnail: document.getElementById('thumbnail').value,
+                price: document.getElementById('price').value,
+                stock: document.getElementById('stock').value
+            };
+
+            const formData = new FormData(event.target);
+            formData.forEach((value, key) => {
+                product[key] = value;
+            });
+
+            try {
+                const response = await fetch('/api/products', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(product)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error);
+                }
+
+                alert('¡Producto agregado con éxito!');
+                renderProducts();
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+
+        function editProduct(id) {
+            const newTitle = prompt('Ingrese el nuevo título:');
+            const newDescription = prompt('Ingrese la nueva descripción:');
+            const newPrice = prompt('Ingrese el nuevo precio:');
+            const newThumbnail = prompt('Ingrese la nueva URL de la miniatura:');
+            const newCode = prompt('Ingrese el nuevo código:');
+            const newStock = prompt('Ingrese la nueva cantidad en stock:');
+
+            if (newTitle && newDescription && newPrice && newThumbnail && newCode && newStock) {
+                fetch(`api/products/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        title: newTitle,
+                        description: newDescription,
+                        price: newPrice,
+                        thumbnail: newThumbnail,
+                        code: newCode,
+                        stock: newStock
+                    })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert(data.message);
+                    })
+                    .catch(error => console.error('Error:', error));
+            } else {
+                alert('Debe ingresar todos los campos para editar el producto.');
+            }
+        }
+
+        function deleteProduct(id) {
+            if (confirm('¿Está seguro de eliminar este producto?')) {
+                fetch(`/api/products/${id}`, {
+                    method: 'DELETE'
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert(data.message);
+                    })
+                    .catch(error => console.error('Error:', error));
+            }
+        }
+
+        async function addToCart(productId, event) {
+            event.stopPropagation();
+            document.getElementById('addToCartButton').setAttribute('data-product-id', productId);
+
+            const cartSelect = document.getElementById('cartSelect');
+            cartSelect.innerHTML = '';
+
+            try {
+                const cartsResponse = await fetch('/api/carts');
+                const carts = await cartsResponse.json();
+
+                carts.forEach(cart => {
+                    const option = document.createElement('option');
+                    option.value = cart._id;
+                    option.textContent = cart._id;
+                    cartSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error al cargar la lista de carritos:', error);
+            }
+
+            document.getElementById('cartSelectionModal').style.display = 'block';
+        }
+
+        document.getElementById('addToCartButton').addEventListener('click', addToCartFromModal);
+
+        async function addToCartFromModal() {
+            const productId = document.getElementById('addToCartButton').dataset.productId;
+            const cartId = document.getElementById('cartSelect').value;
+            const productQuantity = document.getElementById('productQuantity').value;
+
+            try {
+                const productResponse = await fetch(`/api/products/${productId}`);
+                const productDetails = await productResponse.json();
+
+                const response = await fetch(`/api/carts/${cartId}/product/${productId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        productId: productId,
+                        quantity: productQuantity,
+                        title: productDetails.title,
+                        thumbnail: productDetails.thumbnail,
+                        price: productDetails.price
+                    })
+                });
+
+                const data = await response.json();
+                alert(data.message);
+                closeModal();
+            } catch (error) {
+                console.error('Error al agregar al carrito desde el modal:', error);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('cartSelectionModal').style.display = 'none';
+        }
+    </script>

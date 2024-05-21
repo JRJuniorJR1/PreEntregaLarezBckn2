@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import Cart from './models/cartSchema.js';
 
-mongoose.connect('mongodb://localhost:27017/Ecommerce', {
+mongoose.connect('mongodb+srv://jrjuniorjr:jrjuniorjr@jrjuniorjrdatabase.pqxup5d.mongodb.net/Ecommerce', {
   useNewUrlParser: true,
   useUnifiedTopology: true
 }).then(() => {
